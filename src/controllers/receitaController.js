@@ -368,7 +368,42 @@ class ReceitaController {
         }
     }
 
+    async getReceitasPorSubtemas(subtemas) {
+        try {
+            // Cria a query para a cláusula `or` usando a coluna 'subtema'
+            const subtemasQuery = subtemas.map(subtema => `subtema.eq.${subtema}`).join(',');
+    
+            const { data: correlacoes, error: correlacaoError } = await supabase
+                .from('correlacaoReceitas')
+                .select('idReceita')
+                .or(subtemasQuery);
+    
+            if (correlacaoError) throw correlacaoError;
+    
+            // Extrai os IDs únicos de receitas
+            const idsReceitas = [...new Set(correlacoes.map(correlacao => correlacao.idReceita))];
+    
+            if (idsReceitas.length === 0) return [];
+    
+            const { data: receitas, error: receitasError } = await supabase
+                .from('receitas')
+                .select('*')
+                .in('id', idsReceitas)
+                .eq('isVerify', true);
+    
+            if (receitasError) throw receitasError;
+    
+            return receitas;
+        } catch (e) {
+            console.error('Erro ao buscar receitas por subtemas:', e.message);
+            throw e;
+        }
+    }
+    
+    
 }
+
+
 
 function handleError(res, detail = 'Ocorreu um erro.', status = 500) {
     if (!res.headersSent) {
